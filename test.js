@@ -1,7 +1,7 @@
 // Checks the rotation rule, pulled straight out of index.html so it can't drift.
 // Run: node test.js
 const fs = require('fs'), assert = require('assert');
-const src = fs.readFileSync(__dirname + '/index.html', 'utf8');
+const src = fs.readFileSync(__dirname + '/public/index.html', 'utf8');
 const S = {servers: [{id: 'a'}, {id: 'b'}, {id: 'c'}], tables: []};
 const nextFor = new Function('S', src.match(/function nextFor[\s\S]*?\n}/)[0] + ' return nextFor;')(S);
 

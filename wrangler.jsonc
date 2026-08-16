@@ -1,0 +1,6 @@
+{
+  // Static files only, no server code: Wrangler serves the repo root as assets.
+  "name": "rubinos-server-assigment",
+  "compatibility_date": "2026-08-16",
+  "assets": { "directory": "./public" }
+}
