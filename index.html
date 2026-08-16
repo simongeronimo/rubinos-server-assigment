@@ -1,0 +1,447 @@
+<title>Table Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Table Board">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101315" media="(prefers-color-scheme: dark)">
+<style>
+:root{
+  --bg:#ffffff; --panel:#f4f5f6; --fg:#15181b; --mut:#6d747b;
+  --line:#d9dde1; --chip:#ffffff; --focus:#15181b; --drop:#e8eaec;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#101315; --panel:#191d20; --fg:#e7eaec; --mut:#98a0a7;
+    --line:#2b3136; --chip:#15191c; --focus:#e7eaec; --drop:#22282c;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101315; --panel:#191d20; --fg:#e7eaec; --mut:#98a0a7;
+  --line:#2b3136; --chip:#15191c; --focus:#e7eaec; --drop:#22282c;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-variant-numeric:tabular-nums;
+  -webkit-text-size-adjust:100%;
+}
+h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em}
+h2{font-size:15px;font-weight:600;margin:0}
+button,input,select{font:inherit;color:inherit;font-variant-numeric:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.bar{
+  position:sticky; top:0; z-index:2; background:var(--bg);
+  border-bottom:1px solid var(--line); padding:10px 12px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.line{display:flex; flex-wrap:wrap; align-items:center; gap:6px}
+.grow{flex:1}
+.mut{color:var(--mut)}
+.small{font-size:13px}
+
+input[type=text],input[type=number],select{
+  background:var(--chip); border:1px solid var(--line); border-radius:4px;
+  padding:7px 8px; min-width:0;
+}
+input::placeholder{color:var(--mut)}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+#num,#ppl{width:5.5em}
+#srv{max-width:11em}
+button{
+  background:var(--chip); border:1px solid var(--line); border-radius:4px;
+  padding:7px 10px; cursor:pointer;
+}
+button:hover:not(:disabled){border-color:var(--fg)}
+button:disabled{opacity:.4; cursor:default}
+.primary{background:var(--fg); color:var(--bg); border-color:var(--fg); min-width:92px}
+.ghost{border-color:transparent; background:none; color:var(--mut); padding:4px 6px}
+.ghost:hover{color:var(--fg); border-color:transparent}
+
+.seg{display:flex; border:1px solid var(--line); border-radius:4px; overflow:hidden}
+.seg label{padding:7px 12px; cursor:pointer; border-right:1px solid var(--line); font-weight:600}
+.seg label:last-child{border-right:0}
+.seg input{position:absolute; opacity:0; width:0; height:0}
+.seg label:has(:checked){background:var(--fg); color:var(--bg)}
+.seg label:has(:focus-visible){outline:2px solid var(--focus); outline-offset:-2px}
+
+#msg{margin:0; padding:8px 12px; border-bottom:1px solid var(--line); font-size:13px}
+.crew{display:flex; flex-wrap:wrap; gap:4px; align-items:center}
+#crewForm{padding:10px 12px}
+.crew .who{
+  display:inline-flex; align-items:center; gap:2px;
+  border:1px solid var(--line); border-radius:4px; padding:2px 2px 2px 8px; font-size:13px;
+}
+
+#board{
+  display:grid; grid-auto-flow:column; grid-auto-columns:minmax(124px,1fr);
+  gap:1px; background:var(--line); border-bottom:1px solid var(--line);
+  overflow-x:auto;
+}
+.col{background:var(--bg); padding:10px; display:flex; flex-direction:column; gap:8px; min-height:60vh}
+.col.over{background:var(--drop)}
+.col header{display:flex; flex-direction:column; gap:3px}
+.tags{display:flex; gap:4px; flex-wrap:wrap; min-height:20px}
+.tag{font-size:11px; letter-spacing:.06em; text-transform:uppercase; border:1px solid var(--fg); border-radius:3px; padding:1px 5px}
+.tag.big{background:var(--fg); color:var(--bg)}
+ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px}
+.chip{
+  width:100%; display:flex; justify-content:space-between; align-items:baseline;
+  gap:8px; padding:8px 10px; text-align:left; background:var(--panel); border-color:transparent;
+  touch-action:manipulation; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+}
+.chip .id{font-weight:600}
+.chip.big{border-color:var(--fg)}
+.chip .n{color:var(--mut); font-size:13px}
+.chip.big .n{color:var(--fg)}
+.chip.lifted{opacity:.25}
+.dragging .chip{cursor:grabbing}
+#ghost{
+  position:fixed; left:0; top:0; z-index:10; pointer-events:none; margin:0;
+  box-shadow:0 8px 20px rgba(0,0,0,.28); background:var(--panel);
+}
+
+dialog{
+  border:1px solid var(--line); border-radius:6px; padding:0;
+  background:var(--bg); color:var(--fg); width:min(320px,92vw);
+}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+#editForm,#wipeForm{display:flex; flex-direction:column; gap:12px; padding:14px}
+#wipeForm p{margin:0}
+.field{display:flex; flex-direction:column; gap:4px}
+#editTitle{outline:none}   /* parks focus for screen readers; not an interactive target */
+.lbl{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--mut)}
+#enum{flex:1}
+.danger{color:#b3261e; border-color:transparent; background:none; padding:7px 0}
+.danger:hover{border-color:transparent; text-decoration:underline}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .danger{color:#f2837b}}
+:root[data-theme="dark"] .danger{color:#f2837b}
+
+.empty{margin:0; padding:24px 12px; background:var(--bg); color:var(--mut)}
+footer{padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:12px}
+footer button{white-space:nowrap}
+</style>
+
+<div class="bar">
+  <div class="line">
+    <h1>Table Board</h1>
+    <span class="grow"></span>
+    <span class="mut small" id="shiftTotal"></span>
+  </div>
+
+  <form class="line" id="tableForm">
+    <div class="seg">
+      <label><input type="radio" name="letter" value="R" checked>R</label>
+      <label><input type="radio" name="letter" value="M">M</label>
+      <label><input type="radio" name="letter" value="L">L</label>
+    </div>
+    <input type="number" id="num" inputmode="numeric" min="1" placeholder="table" autocomplete="off" required>
+    <input type="number" id="ppl" inputmode="numeric" min="1" placeholder="people" autocomplete="off" required>
+    <select id="srv" aria-label="Assign to"></select>
+    <button class="primary" id="add">Seat</button>
+  </form>
+</div>
+
+<p id="msg" class="mut" hidden></p>
+
+<form class="crew" id="crewForm">
+  <span id="crew" class="crew"></span>
+  <input type="text" id="name" placeholder="add server" autocomplete="off" size="10">
+</form>
+
+<div id="board"></div>
+<footer>
+  <span class="mut small">Tap a table to edit it, drag it to move it. 6+ tops rotate separately.</span>
+  <button class="ghost" id="reset">New shift</button>
+</footer>
+
+<dialog id="edit" aria-labelledby="editTitle">
+  <form method="dialog" id="editForm">
+    <h2 id="editTitle" tabindex="-1" autofocus>Table</h2>
+    <div class="field">
+      <span class="lbl">Table</span>
+      <div class="line">
+        <div class="seg">
+          <label><input type="radio" name="eletter" value="R">R</label>
+          <label><input type="radio" name="eletter" value="M">M</label>
+          <label><input type="radio" name="eletter" value="L">L</label>
+        </div>
+        <input type="number" id="enum" inputmode="numeric" min="1" required>
+      </div>
+    </div>
+    <label class="field"><span class="lbl">People</span><input type="number" id="eppl" inputmode="numeric" min="1" required></label>
+    <label class="field"><span class="lbl">Server</span><select id="esrv"></select></label>
+    <div class="line">
+      <button type="button" class="danger" id="editRemove">Remove table</button>
+      <span class="grow"></span>
+      <button type="button" class="ghost" id="editCancel">Cancel</button>
+      <button value="save" class="primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="wipe" aria-labelledby="wipeTitle">
+  <form method="dialog" id="wipeForm">
+    <h2 id="wipeTitle">New shift</h2>
+    <p class="mut small">This clears every server and table from the board.</p>
+    <div class="line">
+      <span class="grow"></span>
+      <button type="button" class="ghost" id="wipeCancel">Cancel</button>
+      <button value="wipe" class="primary">Clear board</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const KEY = 'tableboard';
+const uid = () => Math.random().toString(36).slice(2, 9);
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const isBig = n => n >= 6;
+
+let S = JSON.parse(localStorage.getItem(KEY) || 'null') || {servers: [], tables: []};
+let override = null;                       // server id the user picked by hand
+
+const msg = t => { $('#msg').textContent = t || ''; $('#msg').hidden = !t; };
+let warned = false;
+const save = () => {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(S));
+  } catch (e) {
+    // Private browsing or a full disk. Keep working from memory, but say so once.
+    if (!warned) { warned = true; msg('This browser is not saving the board — it will be lost if you reload.'); }
+  }
+};
+
+// Whoever got the last table of this size, the next one goes to the server after them.
+// Regular and big tables keep their own place in the rotation.
+function nextFor(big) {
+  if (!S.servers.length) return null;
+  const last = [...S.tables].reverse().find(t => t.big === big);
+  const i = last ? S.servers.findIndex(s => s.id === last.server) + 1 : 0;
+  return S.servers[i % S.servers.length];
+}
+
+const options = () => S.servers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+
+function syncSuggest() {
+  const valid = override && S.servers.some(s => s.id === override);
+  const pick = valid ? override : (nextFor(isBig(+$('#ppl').value)) || {}).id;
+  if (pick) $('#srv').value = pick;
+  $('#add').disabled = !S.servers.length;
+}
+
+function render() {
+  $('#crew').innerHTML = S.servers.map(s =>
+    `<span class="who">${esc(s.name)}<button type="button" class="ghost" data-drop="${s.id}" aria-label="Remove ${esc(s.name)}">&times;</button></span>`
+  ).join('');
+
+  $('#srv').innerHTML = options();
+  syncSuggest();
+
+  const covers = S.tables.reduce((a, t) => a + t.people, 0);
+  $('#shiftTotal').textContent = S.tables.length ? `${S.tables.length} tables · ${covers} ppl` : '';
+
+  const nReg = nextFor(false), nBig = nextFor(true);
+  $('#board').innerHTML = S.servers.length ? S.servers.map(s => {
+    const ts = S.tables.filter(t => t.server === s.id);
+    const c = ts.reduce((a, t) => a + t.people, 0);
+    return `<section class="col" data-server="${s.id}">
+      <header>
+        <h2>${esc(s.name)}</h2>
+        <div class="mut small">${c} ppl</div>
+        <div class="tags">
+          ${nReg && nReg.id === s.id ? '<span class="tag">next</span>' : ''}
+          ${nBig && nBig.id === s.id ? '<span class="tag big">next big</span>' : ''}
+        </div>
+      </header>
+      <ul>${ts.map(t => `<li><button class="chip${t.big ? ' big' : ''}" data-key="${t.key}" aria-label="${t.label}, ${t.people} people. Edit or move.">
+        <span class="id">${t.label}</span><span class="n">${t.people}</span></button></li>`).join('')}</ul>
+    </section>`;
+  }).join('') : '<p class="empty">Add the servers working this shift, in the order they should get tables.</p>';
+}
+
+$('#crewForm').onsubmit = e => {
+  e.preventDefault();
+  const name = $('#name').value.trim();
+  if (!name) return;
+  msg('');
+  S.servers.push({id: uid(), name});
+  save(); $('#name').value = ''; render();
+};
+
+$('#crew').onclick = e => {
+  const id = e.target.dataset.drop;
+  if (!id) return;
+  const s = S.servers.find(x => x.id === id);
+  if (S.tables.some(t => t.server === id)) return msg(`${s.name} still has tables. Move or remove them first.`);
+  msg('');
+  S.servers = S.servers.filter(x => x.id !== id);
+  save(); render();
+};
+
+$('#tableForm').onsubmit = e => {
+  e.preventDefault();
+  const num = $('#num').value.trim(), people = parseInt($('#ppl').value, 10), server = $('#srv').value;
+  if (!num || !(people > 0) || !server) return;
+  msg('');
+  const label = document.querySelector('input[name=letter]:checked').value + num;
+  S.tables.push({key: uid(), label, people, big: isBig(people), server});
+  save();
+  override = null; $('#num').value = ''; $('#ppl').value = '';
+  render(); $('#num').focus();
+};
+
+$('#ppl').oninput = syncSuggest;
+$('#srv').onchange = e => { override = e.target.value; };
+
+$('#reset').onclick = () => $('#wipe').showModal();
+$('#wipeCancel').onclick = () => $('#wipe').close('cancel');
+$('#wipe').addEventListener('close', () => {
+  if ($('#wipe').returnValue !== 'wipe') return;
+  S = {servers: [], tables: []};
+  msg(''); save(); render();
+});
+
+/* ---- edit / move a table ---------------------------------------------- */
+
+let editing = null;
+
+function openEdit(key) {
+  const t = S.tables.find(x => x.key === key);
+  if (!t) return;
+  editing = key;
+  $('#editTitle').textContent = t.label;
+  document.querySelector(`input[name=eletter][value="${t.label[0]}"]`).checked = true;
+  $('#enum').value = t.label.slice(1);
+  $('#eppl').value = t.people;
+  $('#esrv').innerHTML = options();
+  $('#esrv').value = t.server;
+  $('#edit').showModal();
+}
+
+$('#editRemove').onclick = () => $('#edit').close('delete');
+$('#editCancel').onclick = () => $('#edit').close('cancel');
+
+$('#edit').addEventListener('close', () => {
+  const t = S.tables.find(x => x.key === editing), how = $('#edit').returnValue;
+  editing = null;
+  if (!t) return;
+  if (how === 'delete') S.tables = S.tables.filter(x => x !== t);
+  else if (how === 'save') {
+    t.label = document.querySelector('input[name=eletter]:checked').value + $('#enum').value.trim();
+    t.people = parseInt($('#eppl').value, 10);
+    t.big = isBig(t.people);
+    t.server = $('#esrv').value;
+  } else return;
+  msg('');
+  save(); render();
+});
+
+/* ---- drag a table to another server ------------------------------------
+   Mouse drags on movement; touch lifts on a long press, so a normal swipe
+   still scrolls the board. Rotation is derived from the tables, so a move
+   updates who is up next on its own. */
+
+const board = $('#board');
+let press = null, drag = null, over = null, justDragged = false, scrollDir = 0;
+
+// A touch drag is driven by touch events, not pointer events: once the browser
+// decides a gesture is a scroll it sends pointercancel (at coordinates 0,0) and
+// stops sending pointermove, but the touch stream keeps coming. The drop target
+// is the last column hovered, so however the gesture ends the table still lands.
+const point = e => (e.touches && e.touches[0]) || e;
+const colUnder = (x, y) => { const el = document.elementFromPoint(x, y); return el && el.closest('.col'); };
+
+function moveGhost(x, y) {
+  drag.ghost.style.transform = `translate(${x - drag.dx}px, ${y - drag.dy}px)`;
+}
+
+function lift(x, y) {
+  const chip = press.chip, r = chip.getBoundingClientRect();
+  const ghost = chip.cloneNode(true);
+  ghost.id = 'ghost';
+  ghost.style.width = r.width + 'px';
+  document.body.appendChild(ghost);
+  document.body.classList.add('dragging');
+  drag = {key: press.key, chip, ghost, dx: press.x - r.left, dy: press.y - r.top};
+  chip.classList.add('lifted');
+  moveGhost(x, y);
+  requestAnimationFrame(autoScroll);
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+
+function autoScroll() {
+  if (!drag) return;
+  if (scrollDir) board.scrollLeft += scrollDir * 12;
+  requestAnimationFrame(autoScroll);
+}
+
+function track(e) {
+  if (!press) return;
+  const p = point(e);
+  if (!drag) {
+    if (Math.abs(p.clientX - press.x) < 8 && Math.abs(p.clientY - press.y) < 8) return;
+    clearTimeout(press.timer);
+    if (press.mouse) lift(p.clientX, p.clientY);
+    else press = null;                     // finger moved before the hold: it is a scroll
+    return;
+  }
+  if (e.cancelable) e.preventDefault();    // hold the page still while dragging
+  moveGhost(p.clientX, p.clientY);
+  if (over) over.classList.remove('over');
+  over = colUnder(p.clientX, p.clientY);
+  if (over) over.classList.add('over');
+  const r = board.getBoundingClientRect();
+  scrollDir = p.clientX < r.left + 44 ? -1 : p.clientX > r.right - 44 ? 1 : 0;
+}
+
+function drop() {
+  document.removeEventListener('touchmove', track);
+  document.removeEventListener('touchend', drop);
+  document.removeEventListener('touchcancel', drop);
+  if (press) clearTimeout(press.timer);
+  scrollDir = 0;
+  if (!drag) { press = null; return; }     // a plain tap: the click handler opens the editor
+  const t = S.tables.find(x => x.key === drag.key);
+  drag.ghost.remove();
+  drag.chip.classList.remove('lifted');
+  document.body.classList.remove('dragging');
+  drag = press = null;
+  justDragged = true; setTimeout(() => { justDragged = false; }, 0);
+  if (over) {
+    over.classList.remove('over');
+    if (t && over.dataset.server !== t.server) { msg(''); t.server = over.dataset.server; save(); }
+    over = null;
+  }
+  render();
+}
+
+board.addEventListener('pointerdown', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip || e.button) return;
+  const mouse = e.pointerType === 'mouse';
+  press = {key: chip.dataset.key, chip, x: e.clientX, y: e.clientY, mouse, timer: 0};
+  if (mouse) return;
+  press.timer = setTimeout(() => press && lift(press.x, press.y), 300);
+  document.addEventListener('touchmove', track, {passive: false});
+  document.addEventListener('touchend', drop);
+  document.addEventListener('touchcancel', drop);
+});
+
+document.addEventListener('pointermove', track);
+document.addEventListener('pointerup', drop);
+document.addEventListener('pointercancel', e => { if (press && press.mouse) drop(); });
+
+board.addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (chip && !justDragged) openEdit(chip.dataset.key);
+});
+
+render();
+</script>

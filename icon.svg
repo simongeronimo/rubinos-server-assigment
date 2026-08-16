@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Table Board</title>
+  <rect width="64" height="64" rx="12" fill="#15181b"/>
+  <g fill="#f4f5f6">
+    <circle cx="32" cy="32" r="14.5"/>
+    <rect x="25.5" y="5" width="13" height="9" rx="2.5"/>
+    <rect x="25.5" y="50" width="13" height="9" rx="2.5"/>
+    <rect x="5" y="25.5" width="9" height="13" rx="2.5"/>
+    <rect x="50" y="25.5" width="9" height="13" rx="2.5"/>
+  </g>
+</svg>
