@@ -218,13 +218,14 @@ const save = () => {
   }
 };
 
-// Whoever got the last table of this size, the next one goes to the server after them.
-// Regular and big tables keep their own place in the rotation.
+// The next table goes to whoever is holding the fewest of that size; a tie goes
+// to whoever was added to the shift first. So overriding or moving a table does
+// not cost anyone their turn — a server who got skipped is still owed one.
+// Regular and big tables are counted separately.
 function nextFor(big) {
   if (!S.servers.length) return null;
-  const last = [...S.tables].reverse().find(t => t.big === big);
-  const i = last ? S.servers.findIndex(s => s.id === last.server) + 1 : 0;
-  return S.servers[i % S.servers.length];
+  const load = id => S.tables.filter(t => t.big === big && t.server === id).length;
+  return S.servers.reduce((a, b) => load(b.id) < load(a.id) ? b : a);
 }
 
 const options = () => S.servers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
